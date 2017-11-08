@@ -1,16 +1,22 @@
 package com.sample.sy.voice_sample
 
 import android.Manifest
+import android.annotation.TargetApi
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.speech.RecognizerIntent
+import android.speech.tts.TextToSpeech
+import android.speech.tts.TextToSpeech.ERROR
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
+import java.util.*
+import kotlin.collections.HashMap
 
 /**
  * 출처 : http://jeongchul.tistory.com/339
@@ -23,6 +29,8 @@ class MainActivity : AppCompatActivity() {
     // 권한 요청 구분 코드
     private val REQUEST_MICROPHONE = 11
 
+    private lateinit var mTts : TextToSpeech
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -31,6 +39,8 @@ class MainActivity : AppCompatActivity() {
             if (isCheckPermission()) speekRecordition()
             else ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MICROPHONE)
         }
+
+        mTts = TextToSpeech(this, TextToSpeech.OnInitListener { s -> if (ERROR == s) mTts.language = Locale.KOREA })
     }
 
     /**
@@ -63,6 +73,29 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     *  음성 출력
+     */
+    private fun speekMessage(msg : String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) ttsGreater21(msg)
+        else ttsUnder20(msg)
+    }
+
+    @SuppressWarnings("deprecation")
+    private fun ttsUnder20(msg : String) {
+        val params = HashMap<String, String>()
+
+        params.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, msg)
+        mTts.speak(msg, TextToSpeech.QUEUE_ADD, params)
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun ttsGreater21(msg : String) {
+        val utteranceId = this.hashCode().toString() + msg
+
+        mTts.speak(msg, TextToSpeech.QUEUE_FLUSH, null, msg)
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
 
         when (requestCode) {
@@ -92,6 +125,7 @@ class MainActivity : AppCompatActivity() {
                 // 가장 유사한 단어부터 시작되는 배열중에서 0번째를 꺼냄
                 val result = resultArray[0]
                 msg_view.text = result.toString()
+                speekMessage(result)
             }
         }
         super.onActivityResult(requestCode, resultCode, data)
